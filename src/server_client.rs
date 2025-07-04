@@ -69,7 +69,7 @@ pub unsafe fn server_client_set_overlay(
 
         let tv: libc::timeval = libc::timeval {
             tv_sec: delay as i64 / 1000,
-            tv_usec: (delay as i64 % 1000) * 1000,
+            tv_usec: ((delay as i64 % 1000) * 1000) as i32,
         };
 
         if event_initialized(&raw mut (*c).overlay_timer) != 0 {
@@ -739,7 +739,7 @@ pub unsafe fn server_client_check_mouse(c: *mut client, event: *mut key_event) -
 
                         log_debug!("click timer started");
                         tv.tv_sec = KEYC_CLICK_TIMEOUT as i64 / 1000;
-                        tv.tv_usec = (KEYC_CLICK_TIMEOUT as i64 % 1000) * 1000i64;
+                        tv.tv_usec = ((KEYC_CLICK_TIMEOUT as i64 % 1000) * 1000i64) as i32;
                         evtimer_del(&raw mut (*c).click_timer);
                         evtimer_add(&raw mut (*c).click_timer, &raw const tv);
                     }
@@ -1758,7 +1758,7 @@ pub unsafe fn server_client_assume_paste(s: *mut session) -> i32 {
             &raw const (*s).last_activity_time,
             &raw mut tv,
         );
-        if tv.tv_sec == 0 && tv.tv_usec < t as i64 * 1000 {
+        if tv.tv_sec == 0 && tv.tv_usec < (t as i64 * 1000) as i32 {
             log_debug!(
                 "session {} pasting (flag {})",
                 _s((*s).name),
@@ -2004,7 +2004,7 @@ pub unsafe fn server_client_key_callback(item: *mut cmdq_item, data: *mut c_void
                                 (*c).flags |= client_flag::REPEAT;
 
                                 tv.tv_sec = xtimeout as i64 / 1000;
-                                tv.tv_usec = (xtimeout as i64 % 1000) * 1000i64;
+                                tv.tv_usec = ((xtimeout as i64 % 1000) * 1000i64) as i32;
                                 evtimer_del(&raw mut (*c).repeat_timer);
                                 evtimer_add(&raw mut (*c).repeat_timer, &tv);
                             } else {

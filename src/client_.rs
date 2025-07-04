@@ -115,10 +115,10 @@ pub unsafe fn client_connect(
         let mut locked: i32 = 0;
         let mut lockfile: *mut c_char = null_mut();
 
-        sa.sun_family = AF_UNIX as u16;
+        sa.sun_family = AF_UNIX as u8;
         let size = strlcpy(&raw mut sa.sun_path as _, path, size_of_val(&sa.sun_path));
         if size >= size_of_val(&sa.sun_path) {
-            errno!() = ENAMETOOLONG;
+            errno!(ENAMETOOLONG);
             return -1;
         }
         log_debug!("socket is {}", _s(path));

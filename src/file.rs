@@ -18,9 +18,9 @@ use crate::compat::{
     tree::{rb_find, rb_foreach, rb_insert, rb_remove},
 };
 use libc::{
-    __errno_location, BUFSIZ, E2BIG, EBADF, EINVAL, EIO, ENOMEM, O_APPEND, O_CREAT, O_NONBLOCK,
-    O_RDONLY, O_WRONLY, STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, close, dup, fclose, ferror,
-    fopen, fread, fwrite, memcpy, open, strcmp,
+    BUFSIZ, E2BIG, EBADF, EINVAL, EIO, ENOMEM, O_APPEND, O_CREAT, O_NONBLOCK, O_RDONLY, O_WRONLY,
+    STDERR_FILENO, STDIN_FILENO, STDOUT_FILENO, close, dup, fclose, ferror, fopen, fread, fwrite,
+    memcpy, open, strcmp,
 };
 
 pub static mut file_next_stream: i32 = 3;
@@ -344,7 +344,7 @@ pub unsafe fn file_write(
                     }
                     f = fopen((*cf).path, mode);
                     if f.is_null() {
-                        (*cf).error = *__errno_location();
+                        (*cf).error = errno!();
                         break 'done;
                     }
                     if fwrite(bdata, 1, bsize, f) != bsize {
@@ -427,7 +427,7 @@ pub unsafe fn file_read(
                 if c.is_null() || (*c).flags.intersects(client_flag::ATTACHED) {
                     f = fopen((*cf).path, c"rb".as_ptr());
                     if f.is_null() {
-                        (*cf).error = *__errno_location();
+                        (*cf).error = errno!();
                         break 'done;
                     }
                     loop {
@@ -671,7 +671,7 @@ pub unsafe fn file_write_open(
                 (*cf).fd = open(path, (*msg).flags | flags, 0o644);
             } else if allow_streams != 0 {
                 if (*msg).fd != STDOUT_FILENO && (*msg).fd != STDERR_FILENO {
-                    *__errno_location() = EBADF;
+                    errno!(EBADF);
                 } else {
                     (*cf).fd = dup((*msg).fd);
                     if close_received != 0 {
@@ -679,10 +679,10 @@ pub unsafe fn file_write_open(
                     } /* can only be used once */
                 }
             } else {
-                *__errno_location() = EBADF;
+                errno!(EBADF);
             }
             if (*cf).fd == -1 {
-                error = *__errno_location();
+                error = errno!();
                 break 'reply;
             }
 
@@ -878,7 +878,7 @@ pub unsafe fn file_read_open(
                 (*cf).fd = open(path, flags);
             } else if allow_streams != 0 {
                 if (*msg).fd != STDIN_FILENO {
-                    *__errno_location() = EBADF;
+                    errno!(EBADF);
                 } else {
                     (*cf).fd = dup((*msg).fd);
                     if close_received != 0 {
@@ -886,10 +886,10 @@ pub unsafe fn file_read_open(
                     }
                 }
             } else {
-                *__errno_location() = EBADF;
+                errno!(EBADF);
             }
             if (*cf).fd == -1 {
-                error = *__errno_location();
+                error = errno!();
                 break 'reply;
             }
 

@@ -182,7 +182,7 @@ pub unsafe fn stravis(outp: *mut *mut c_char, src: *const c_char, flag: vis_flag
         *outp = libc::realloc(buf.cast(), len as usize + 1).cast();
         if (*outp).is_null() {
             *outp = buf;
-            crate::errno!() = serrno;
+            crate::errno!(serrno);
         }
 
         len

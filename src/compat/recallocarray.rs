@@ -35,7 +35,7 @@ pub unsafe fn recallocarray(
             && newnmemb > 0
             && usize::MAX / newnmemb < size
         {
-            crate::errno!() = libc::ENOMEM;
+            crate::errno!(libc::ENOMEM);
             return null_mut();
         }
         let newsize = newnmemb * size;
@@ -44,7 +44,7 @@ pub unsafe fn recallocarray(
             && oldnmemb > 0
             && usize::MAX / oldnmemb < size
         {
-            crate::errno!() = libc::EINVAL;
+            crate::errno!(libc::EINVAL);
             return null_mut();
         }
         let oldsize = oldnmemb * size;
@@ -78,7 +78,10 @@ pub unsafe fn recallocarray(
             libc::memcpy(newptr, ptr, newsize);
         }
 
+        #[cfg(target_os = "linux")]
         libc::explicit_bzero(ptr, oldsize);
+        #[cfg(target_os = "macos")]
+        crate::compat::explicit_bzero(ptr, oldsize);
         libc::free(ptr);
 
         newptr

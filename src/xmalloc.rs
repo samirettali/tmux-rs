@@ -17,7 +17,7 @@ use ::core::{
     ptr::NonNull,
 };
 
-use ::libc::{calloc, malloc, reallocarray, strdup, strndup};
+use ::libc::{calloc, malloc, strdup, strndup};
 
 use crate::{compat::recallocarray, fatalx, vasprintf, vsnprintf};
 
@@ -106,7 +106,12 @@ pub unsafe fn xreallocarray_old<T>(ptr: *mut T, nmemb: usize, size: usize) -> No
             fatalx(c"xreallocarray: zero size");
         }
 
-        match NonNull::new(reallocarray(ptr as _, nmemb, size)) {
+        #[cfg(target_os = "linux")]
+        let result = libc::reallocarray(ptr as _, nmemb, size);
+        #[cfg(target_os = "macos")]
+        let result = crate::compat::reallocarray(ptr as _, nmemb, size);
+
+        match NonNull::new(result) {
             None => fatalx(c"xreallocarray: allocating "),
             Some(new_ptr) => new_ptr.cast(),
         }
@@ -120,7 +125,12 @@ pub unsafe fn xreallocarray_<T>(ptr: *mut T, nmemb: usize) -> NonNull<T> {
             fatalx(c"xreallocarray: zero size");
         }
 
-        match NonNull::new(reallocarray(ptr as _, nmemb, size)) {
+        #[cfg(target_os = "linux")]
+        let result = libc::reallocarray(ptr as _, nmemb, size);
+        #[cfg(target_os = "macos")]
+        let result = crate::compat::reallocarray(ptr as _, nmemb, size);
+
+        match NonNull::new(result) {
             None => fatalx(c"xreallocarray: allocating"),
             Some(new_ptr) => new_ptr.cast(),
         }

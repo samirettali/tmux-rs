@@ -217,7 +217,7 @@ pub unsafe extern "C" fn window_copy_scroll_timer(_fd: i32, _events: i16, arg: *
         let data: *mut window_copy_mode_data = (*wme).data.cast();
         let mut tv = libc::timeval {
             tv_sec: 0,
-            tv_usec: WINDOW_COPY_DRAG_REPEAT_TIME,
+            tv_usec: WINDOW_COPY_DRAG_REPEAT_TIME as i32,
         };
 
         evtimer_del(&raw mut (*data).dragtimer);
@@ -6668,7 +6668,7 @@ pub unsafe fn window_copy_drag_update(c: *mut client, m: *mut mouse_event) {
 
         let mut tv: libc::timeval = libc::timeval {
             tv_sec: 0,
-            tv_usec: WINDOW_COPY_DRAG_REPEAT_TIME,
+            tv_usec: WINDOW_COPY_DRAG_REPEAT_TIME as i32,
         };
 
         if c.is_null() {

@@ -248,7 +248,7 @@ unsafe fn make_label(mut label: *const c_char, cause: *mut *mut c_char) -> *cons
                 );
                 break 'fail;
             }
-            if !S_ISDIR(sb.st_mode) {
+            if !S_ISDIR(sb.st_mode.into()) {
                 *cause = format_nul!("{} is not a directory", _s(base));
                 break 'fail;
             }

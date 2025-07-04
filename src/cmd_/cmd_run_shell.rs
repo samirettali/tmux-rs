@@ -170,7 +170,7 @@ pub unsafe fn cmd_run_shell_exec(self_: *mut cmd, item: *mut cmdq_item) -> cmd_r
         if !delay.is_null() {
             let mut tv: timeval = timeval {
                 tv_sec: d as time_t,
-                tv_usec: (d - (d as time_t as f64)) as i64 * 1000000i64,
+                tv_usec: ((d - (d as time_t as f64)) * 1000000f64) as i32,
             };
             evtimer_add(&raw mut (*cdata).timer, &raw mut tv);
         } else {

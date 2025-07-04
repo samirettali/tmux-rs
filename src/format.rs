@@ -3600,7 +3600,11 @@ fn format_find(
         let mut saved: *mut c_char = null_mut();
         if modifiers.intersects(format_modifiers::FORMAT_BASENAME) {
             saved = found;
-            found = xstrdup(libc::posix_basename(saved)).as_ptr();
+            #[cfg(target_os = "linux")]
+            let basename_result = libc::posix_basename(saved);
+            #[cfg(target_os = "macos")]
+            let basename_result = crate::compat::posix_basename(saved);
+            found = xstrdup(basename_result).as_ptr();
             free_(saved);
         }
         if modifiers.intersects(format_modifiers::FORMAT_DIRNAME) {
