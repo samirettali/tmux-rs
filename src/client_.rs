@@ -325,10 +325,14 @@ pub unsafe extern "C-unwind" fn client_main(
         }
         if fd == -1 {
             if errno!() == ECONNREFUSED {
-                fprintf(stderr, c"no server running on %s\n".as_ptr(), socket_path);
+                fprintf(
+                    get_stderr(),
+                    c"no server running on %s\n".as_ptr(),
+                    socket_path,
+                );
             } else {
                 fprintf(
-                    stderr,
+                    get_stderr(),
                     c"error connecting to %s (%s)\n".as_ptr(),
                     socket_path,
                     strerror(errno!()),
@@ -373,7 +377,7 @@ pub unsafe extern "C-unwind" fn client_main(
                 &raw mut cause,
             ) != 0
         {
-            fprintf(stderr, c"%s\n".as_ptr(), cause);
+            fprintf(get_stderr(), c"%s\n".as_ptr(), cause);
             free(cause as _);
             return 1;
         }
@@ -389,7 +393,7 @@ pub unsafe extern "C-unwind" fn client_main(
         if (*&raw const client_flags).intersects(client_flag::CONTROLCONTROL) {
             if tcgetattr(STDIN_FILENO, &raw mut saved_tio) != 0 {
                 fprintf(
-                    stderr,
+                    get_stderr(),
                     c"tcgetattr failed: %s\n".as_ptr(),
                     strerror(errno!()),
                 );
@@ -420,7 +424,7 @@ pub unsafe extern "C-unwind" fn client_main(
                 size += strlen(*argv.add(i as _)) + 1;
             }
             if size > MAX_IMSGSIZE - size_of::<msg_command>() {
-                fprintf(stderr, c"command too long\n".as_ptr());
+                fprintf(get_stderr(), c"command too long\n".as_ptr());
                 return 1;
             }
             data = xmalloc(size_of::<msg_command>() + size).cast().as_ptr();
@@ -428,14 +432,14 @@ pub unsafe extern "C-unwind" fn client_main(
             (*data).argc = argc;
             // TODO this cast seems fishy
             if cmd_pack_argv(argc, argv, data.add(1).cast(), size) != 0 {
-                fprintf(stderr, c"command too long\n".as_ptr());
+                fprintf(get_stderr(), c"command too long\n".as_ptr());
                 free_(data);
                 return 1;
             }
             size += size_of::<msg_command>();
 
             if proc_send(client_peer, msg, -1, data as _, size) != 0 {
-                fprintf(stderr, c"failed to send command\n".as_ptr());
+                fprintf(get_stderr(), c"failed to send command\n".as_ptr());
                 free_(data);
                 return 1;
             }
@@ -472,11 +476,11 @@ pub unsafe extern "C-unwind" fn client_main(
             } else {
                 printf(c"%%exit\n".as_ptr());
             }
-            fflush(stdout);
+            fflush(get_stdout());
             if (*&raw const client_flags).intersects(client_flag::CONTROL_WAITEXIT) {
-                setvbuf(stdin, null_mut(), _IOLBF, 0);
+                setvbuf(get_stdin(), null_mut(), _IOLBF, 0);
                 loop {
-                    let linelen = getline(&raw mut line, &raw mut linesize, stdin);
+                    let linelen = getline(&raw mut line, &raw mut linesize, get_stdin());
                     if linelen <= 1 {
                         break;
                     }
@@ -486,11 +490,11 @@ pub unsafe extern "C-unwind" fn client_main(
             if (*&raw const client_flags).intersects(client_flag::CONTROLCONTROL) {
                 // TODO originally octal 033
                 printf(c"\x1b\\".as_ptr());
-                fflush(stdout);
+                fflush(get_stdout());
                 tcsetattr(STDOUT_FILENO, TCSAFLUSH, &raw mut saved_tio);
             }
         } else if client_exitreason != client_exitreason::CLIENT_EXIT_NONE {
-            fprintf(stderr, c"%s\n".as_ptr(), client_exit_message());
+            fprintf(get_stderr(), c"%s\n".as_ptr(), client_exit_message());
         }
 
         client_exitval
@@ -790,7 +794,7 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
                 }
 
                 fprintf(
-                    stderr,
+                    get_stderr(),
                     c"protocol version mismatch (client %d, server %u)\n".as_ptr(),
                     PROTOCOL_VERSION,
                     (*imsg).hdr.peerid & 0xff,
@@ -850,7 +854,10 @@ unsafe fn client_dispatch_wait(imsg: *mut imsg) {
             msgtype::MSG_WRITE => file_write_data(&raw mut client_files, imsg),
             msgtype::MSG_WRITE_CLOSE => file_write_close(&raw mut client_files, imsg),
             msgtype::MSG_OLDSTDERR | msgtype::MSG_OLDSTDIN | msgtype::MSG_OLDSTDOUT => {
-                fprintf(stderr, c"server version is too old for client\n".as_ptr());
+                fprintf(
+                    get_stderr(),
+                    c"server version is too old for client\n".as_ptr(),
+                );
                 proc_exit(client_proc);
             }
             _ => (), // TODO
