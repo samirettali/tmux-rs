@@ -551,7 +551,7 @@ pub unsafe fn status_message_set_(
         }
         if delay > 0 {
             tv.tv_sec = (delay / 1000) as i64;
-            tv.tv_usec = (delay as i64 % 1000) * 1000i64;
+            tv.tv_usec = ((delay as i64 % 1000) * 1000i64) as i32;
 
             if event_initialized(&raw mut (*c).message_timer) != 0 {
                 evtimer_del(&raw mut (*c).message_timer);

@@ -33,7 +33,10 @@ pub unsafe fn setproctitle_(_fmt: *const c_char, name: *const c_char, socket_pat
                 *cp = b'\0' as i8;
             }
         }
+        #[cfg(target_os = "linux")]
         libc::prctl(libc::PR_SET_NAME, &raw const name as *const c_char);
+        #[cfg(target_os = "macos")]
+        crate::compat::prctl(crate::compat::PR_SET_NAME, &raw const name as *const c_char);
     }
 }
 

@@ -96,10 +96,55 @@ const fn transmute_ptr<T>(value: Option<NonNull<T>>) -> *mut T {
 use compat::imsg::imsg; // TODO move
 
 type wchar_t = core::ffi::c_int;
+
+#[cfg(target_os = "linux")]
 unsafe extern "C" {
     static mut stdin: *mut FILE;
     static mut stdout: *mut FILE;
     static mut stderr: *mut FILE;
+}
+
+#[cfg(target_os = "macos")]
+unsafe extern "C" {
+    fn __stdinp() -> *mut FILE;
+    fn __stdoutp() -> *mut FILE;
+    fn __stderrp() -> *mut FILE;
+}
+
+#[inline]
+unsafe fn get_stdin() -> *mut FILE {
+    #[cfg(target_os = "macos")]
+    {
+        unsafe { __stdinp() }
+    }
+    #[cfg(target_os = "linux")]
+    {
+        stdin
+    }
+}
+
+#[inline]
+unsafe fn get_stdout() -> *mut FILE {
+    #[cfg(target_os = "macos")]
+    {
+        unsafe { __stdoutp() }
+    }
+    #[cfg(target_os = "linux")]
+    {
+        stdout
+    }
+}
+
+#[inline]
+unsafe fn get_stderr() -> *mut FILE {
+    #[cfg(target_os = "macos")]
+    {
+        unsafe { __stderrp() }
+    }
+    #[cfg(target_os = "linux")]
+    {
+        stderr
+    }
 }
 
 // TODO move to compat

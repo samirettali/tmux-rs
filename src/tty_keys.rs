@@ -1276,7 +1276,7 @@ pub unsafe fn tty_keys_next(tty: *mut tty) -> i32 {
                         delay = 1;
                     }
                     tv.tv_sec = delay / 1000;
-                    tv.tv_usec = (delay % 1000) * 1000i64;
+                    tv.tv_usec = ((delay % 1000) * 1000i64) as i32;
 
                     // Start the timer.
                     if event_initialized(&raw const (*tty).key_timer) != 0 {

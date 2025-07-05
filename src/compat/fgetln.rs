@@ -22,7 +22,7 @@ pub unsafe fn fgetln(fp: *mut libc::FILE, len: *mut usize) -> *mut c_char {
         let mut r = 0usize;
 
         if fp.is_null() || len.is_null() {
-            crate::errno!() = libc::EINVAL;
+            crate::errno!(libc::EINVAL);
             return null_mut();
         }
         if buf.is_null() {
@@ -38,11 +38,14 @@ pub unsafe fn fgetln(fp: *mut libc::FILE, len: *mut usize) -> *mut c_char {
             *buf.add(r) = c as i8;
             r += 1;
             if (r == bufsz) {
+                #[cfg(target_os = "linux")]
                 let p = libc::reallocarray(buf.cast(), 2, bufsz);
+                #[cfg(target_os = "macos")]
+                let p = crate::compat::reallocarray(buf.cast(), 2, bufsz);
                 if p.is_null() {
                     let e = crate::errno!();
                     libc::free(buf.cast());
-                    crate::errno!() = e;
+                    crate::errno!(e);
                     buf = null_mut();
                     bufsz = 0;
                     return null_mut();

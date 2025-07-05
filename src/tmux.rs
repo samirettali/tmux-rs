@@ -48,7 +48,7 @@ pub static mut shell_command: *mut c_char = null_mut();
 
 pub fn usage() -> ! {
     unsafe {
-        libc::fprintf(stderr, c"usage: %s [-2CDlNuVv] [-c shell-command] [-f file] [-L socket-name]\n            [-S socket-path] [-T features] [command [flags]]\n".as_ptr(), getprogname());
+        libc::fprintf(get_stderr(), c"usage: %s [-2CDlNuVv] [-c shell-command] [-f file] [-L socket-name]\n            [-S socket-path] [-T features] [command [flags]]\n".as_ptr(), getprogname());
         std::process::exit(1)
     }
 }
@@ -248,7 +248,7 @@ unsafe fn make_label(mut label: *const c_char, cause: *mut *mut c_char) -> *cons
                 );
                 break 'fail;
             }
-            if !S_ISDIR(sb.st_mode) {
+            if !S_ISDIR(sb.st_mode.into()) {
                 *cause = format_nul!("{} is not a directory", _s(base));
                 break 'fail;
             }
@@ -588,7 +588,7 @@ pub unsafe fn main(mut argc: i32, mut argv: *mut *mut c_char, env: *mut *mut c_c
             path = make_label(label.cast(), &raw mut cause);
             if path.is_null() {
                 if !cause.is_null() {
-                    libc::fprintf(stderr, c"%s\n".as_ptr(), cause);
+                    libc::fprintf(get_stderr(), c"%s\n".as_ptr(), cause);
                     free(cause as _);
                 }
                 std::process::exit(1);

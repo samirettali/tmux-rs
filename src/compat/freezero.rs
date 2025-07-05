@@ -16,7 +16,10 @@ use core::ffi::c_void;
 pub unsafe fn freezero(ptr: *mut c_void, size: usize) {
     unsafe {
         if !ptr.is_null() {
+            #[cfg(target_os = "linux")]
             libc::explicit_bzero(ptr, size);
+            #[cfg(target_os = "macos")]
+            crate::compat::explicit_bzero(ptr, size);
             libc::free(ptr);
         }
     }

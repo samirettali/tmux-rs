@@ -9,19 +9,19 @@ use ::libc::{
     memset, msghdr, sendmsg, writev,
 };
 
-use super::errno;
 use super::imsg::{ibuf, msgbuf};
 use super::queue::{
     tailq_first, tailq_foreach, tailq_init, tailq_insert_tail, tailq_next, tailq_remove,
 };
 use super::{freezero, recallocarray};
+use crate::errno;
 
 const IOV_MAX: usize = 1024; // TODO find where IOV_MAX is defined
 
 pub unsafe fn ibuf_open(len: usize) -> *mut ibuf {
     unsafe {
         if len == 0 {
-            errno!() = EINVAL;
+            errno!(EINVAL);
             return null_mut();
         }
         let buf: *mut ibuf = calloc(1, size_of::<ibuf>()) as *mut ibuf;
@@ -45,7 +45,7 @@ pub unsafe fn ibuf_open(len: usize) -> *mut ibuf {
 pub unsafe fn ibuf_dynamic(len: usize, max: usize) -> *mut ibuf {
     unsafe {
         if len == 0 || max < len {
-            errno!() = EINVAL;
+            errno!(EINVAL);
             return null_mut();
         }
         let buf: *mut ibuf = calloc(1, size_of::<ibuf>()) as *mut ibuf;
@@ -71,7 +71,7 @@ pub unsafe fn ibuf_realloc(buf: *mut ibuf, len: usize) -> i32 {
     unsafe {
         /* on static buffers max is eq size and so the following fails */
         if len > usize::MAX - (*buf).wpos || (*buf).wpos + len > (*buf).max {
-            errno!() = ERANGE;
+            errno!(ERANGE);
             return -1;
         }
 
@@ -89,7 +89,7 @@ pub unsafe fn ibuf_realloc(buf: *mut ibuf, len: usize) -> i32 {
 pub unsafe fn ibuf_reserve(buf: *mut ibuf, len: usize) -> *mut c_void {
     unsafe {
         if len > usize::MAX - (*buf).wpos || (*buf).max == 0 {
-            errno!() = ERANGE;
+            errno!(ERANGE);
             return null_mut();
         }
 
@@ -126,7 +126,7 @@ pub unsafe fn ibuf_add_buf(buf: *mut ibuf, from: *const ibuf) -> c_int {
 pub unsafe fn ibuf_add_n8(buf: *mut ibuf, value: u64) -> c_int {
     unsafe {
         if value > u8::MAX as u64 {
-            errno!() = EINVAL;
+            errno!(EINVAL);
             return -1;
         }
         let v = value;
@@ -137,7 +137,7 @@ pub unsafe fn ibuf_add_n8(buf: *mut ibuf, value: u64) -> c_int {
 pub unsafe fn ibuf_add_n16(buf: *mut ibuf, value: u64) -> c_int {
     unsafe {
         if value > u16::MAX as u64 {
-            errno!() = EINVAL;
+            errno!(EINVAL);
             return -1;
         }
         let v = (value as u16).to_be();
@@ -148,7 +148,7 @@ pub unsafe fn ibuf_add_n16(buf: *mut ibuf, value: u64) -> c_int {
 pub unsafe fn ibuf_add_n32(buf: *mut ibuf, value: u64) -> c_int {
     unsafe {
         if value > u32::MAX as u64 {
-            errno!() = EINVAL;
+            errno!(EINVAL);
             return -1;
         }
         let v = (value as u32).to_be();
@@ -166,7 +166,7 @@ pub unsafe fn ibuf_add_n64(buf: *mut ibuf, value: u64) -> c_int {
 pub unsafe fn ibuf_add_h16(buf: *mut ibuf, value: u64) -> c_int {
     unsafe {
         if value > u16::MAX as u64 {
-            errno!() = EINVAL;
+            errno!(EINVAL);
             return -1;
         }
         let v = value as u16;
@@ -177,7 +177,7 @@ pub unsafe fn ibuf_add_h16(buf: *mut ibuf, value: u64) -> c_int {
 pub unsafe fn ibuf_add_h32(buf: *mut ibuf, value: u64) -> c_int {
     unsafe {
         if value > u32::MAX as u64 {
-            errno!() = EINVAL;
+            errno!(EINVAL);
             return -1;
         }
         let v = value as u32;
@@ -204,7 +204,7 @@ pub unsafe fn ibuf_seek(buf: *mut ibuf, pos: usize, len: usize) -> *mut c_void {
     unsafe {
         /* only allow seeking between rpos and wpos */
         if ibuf_size(buf) < pos || usize::MAX - pos < len || ibuf_size(buf) < pos + len {
-            errno!() = ERANGE;
+            errno!(ERANGE);
             return null_mut();
         }
 
@@ -227,7 +227,7 @@ pub unsafe fn ibuf_set(buf: *mut ibuf, pos: usize, data: *const c_void, len: usi
 pub unsafe fn ibuf_set_n8(buf: *mut ibuf, pos: usize, value: u64) -> c_int {
     unsafe {
         if value > u8::MAX as u64 {
-            errno!() = EINVAL;
+            errno!(EINVAL);
             return -1;
         }
         let v = value as u8;
@@ -238,7 +238,7 @@ pub unsafe fn ibuf_set_n8(buf: *mut ibuf, pos: usize, value: u64) -> c_int {
 pub unsafe fn ibuf_set_n16(buf: *mut ibuf, pos: usize, value: u64) -> c_int {
     unsafe {
         if value > u16::MAX as u64 {
-            errno!() = EINVAL;
+            errno!(EINVAL);
             return -1;
         }
         let v = u16::to_be(value as u16);
@@ -249,7 +249,7 @@ pub unsafe fn ibuf_set_n16(buf: *mut ibuf, pos: usize, value: u64) -> c_int {
 pub unsafe fn ibuf_set_n32(buf: *mut ibuf, pos: usize, value: u64) -> c_int {
     unsafe {
         if value > u32::MAX as u64 {
-            errno!() = EINVAL;
+            errno!(EINVAL);
             return -1;
         }
         let v = u32::to_be(value as u32);
@@ -267,7 +267,7 @@ pub unsafe fn ibuf_set_n64(buf: *mut ibuf, pos: usize, value: u64) -> c_int {
 pub unsafe fn ibuf_set_h16(buf: *mut ibuf, pos: usize, value: u64) -> c_int {
     unsafe {
         if value > u16::MAX as u64 {
-            errno!() = EINVAL;
+            errno!(EINVAL);
             return -1;
         }
         let v = value as u16;
@@ -278,7 +278,7 @@ pub unsafe fn ibuf_set_h16(buf: *mut ibuf, pos: usize, value: u64) -> c_int {
 pub unsafe fn ibuf_set_h32(buf: *mut ibuf, pos: usize, value: u64) -> c_int {
     unsafe {
         if value > u32::MAX as u64 {
-            errno!() = EINVAL;
+            errno!(EINVAL);
             return -1;
         }
         let v = value as u32;
@@ -322,7 +322,7 @@ pub unsafe fn ibuf_truncate(buf: *mut ibuf, len: usize) -> c_int {
         }
         if (*buf).max == 0 {
             /* only allow to truncate down */
-            errno!() = ERANGE;
+            errno!(ERANGE);
             return -1;
         }
         ibuf_add_zero(buf, len - ibuf_size(buf))
@@ -360,7 +360,7 @@ pub unsafe fn ibuf_from_ibuf(buf: *mut ibuf, from: *const ibuf) {
 pub unsafe fn ibuf_get(buf: *mut ibuf, data: *mut c_void, len: usize) -> c_int {
     unsafe {
         if ibuf_size(buf) < len {
-            errno!() = EBADMSG;
+            errno!(EBADMSG);
             return -1;
         }
 
@@ -373,7 +373,7 @@ pub unsafe fn ibuf_get(buf: *mut ibuf, data: *mut c_void, len: usize) -> c_int {
 pub unsafe fn ibuf_get_ibuf(buf: *mut ibuf, len: usize, new: *mut ibuf) -> c_int {
     unsafe {
         if ibuf_size(buf) < len {
-            errno!() = EBADMSG;
+            errno!(EBADMSG);
             return -1;
         }
 
@@ -426,7 +426,7 @@ pub unsafe fn ibuf_get_h64(buf: *mut ibuf, value: *mut u64) -> c_int {
 pub unsafe fn ibuf_skip(buf: *mut ibuf, len: usize) -> c_int {
     unsafe {
         if ibuf_size(buf) < len {
-            errno!() = EBADMSG;
+            errno!(EBADMSG);
             return -1;
         }
 
@@ -507,7 +507,7 @@ pub unsafe fn ibuf_write(msgbuf: *mut msgbuf) -> c_int {
                     continue 'again;
                 }
                 if errno!() == ENOBUFS {
-                    errno!() = EAGAIN;
+                    errno!(EAGAIN);
                 }
                 return -1;
             }
@@ -517,7 +517,7 @@ pub unsafe fn ibuf_write(msgbuf: *mut msgbuf) -> c_int {
 
         if n == 0 {
             /* connection closed */
-            errno!() = 0;
+            errno!(0);
             return 0;
         }
 
@@ -593,13 +593,13 @@ pub unsafe fn msgbuf_write(msgbuf: *mut msgbuf) -> c_int {
         }
 
         msg.msg_iov = iov.as_mut_ptr();
-        msg.msg_iovlen = i as usize;
+        msg.msg_iovlen = i as i32;
 
         if !buf0.is_null() {
             msg.msg_control = &raw mut cmsgbuf.buf as _;
-            msg.msg_controllen = size_of_val(&cmsgbuf.buf);
+            msg.msg_controllen = size_of_val(&cmsgbuf.buf) as u32;
             let cmsg = CMSG_FIRSTHDR(&raw const msg);
-            (*cmsg).cmsg_len = CMSG_LEN(size_of::<c_int>() as u32) as usize;
+            (*cmsg).cmsg_len = CMSG_LEN(size_of::<c_int>() as u32) as u32;
             (*cmsg).cmsg_level = SOL_SOCKET;
             (*cmsg).cmsg_type = SCM_RIGHTS;
             *CMSG_DATA(cmsg).cast() = (*buf0).fd;
@@ -613,7 +613,7 @@ pub unsafe fn msgbuf_write(msgbuf: *mut msgbuf) -> c_int {
                     continue 'again;
                 }
                 if errno!() == ENOBUFS {
-                    errno!() = EAGAIN;
+                    errno!(EAGAIN);
                 }
                 return -1;
             }
@@ -621,7 +621,7 @@ pub unsafe fn msgbuf_write(msgbuf: *mut msgbuf) -> c_int {
         }
 
         if n == 0 {
-            errno!() = 0;
+            errno!(0);
             return 0;
         }
 

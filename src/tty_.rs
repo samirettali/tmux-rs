@@ -163,7 +163,7 @@ pub unsafe extern "C" fn tty_timer_callback(_fd: i32, events: i16, data: *mut c_
         let c = (*tty).client;
         let mut tv = libc::timeval {
             tv_sec: 0,
-            tv_usec: TTY_BLOCK_INTERVAL as i64,
+            tv_usec: TTY_BLOCK_INTERVAL as i32,
         };
 
         // log_debug("%s: %zu discarded", (*c).name, (*tty).discarded);
@@ -187,7 +187,7 @@ pub unsafe fn tty_block_maybe(tty: *mut tty) -> i32 {
         let size = EVBUFFER_LENGTH((*tty).out);
         let tv = libc::timeval {
             tv_sec: 0,
-            tv_usec: TTY_BLOCK_INTERVAL as i64,
+            tv_usec: TTY_BLOCK_INTERVAL as i32,
         };
 
         if size == 0 {

@@ -1,9 +1,22 @@
 use ::libc::fprintf;
 
+#[cfg(target_os = "linux")]
 extern "C" {
     static mut stderr: *mut libc::FILE;
     fn getprogname() -> *const libc::c_char;
     fn strchr(_: *const libc::c_char, _: libc::c_int) -> *mut libc::c_char;
+}
+
+#[cfg(target_os = "macos")]
+extern "C" {
+    fn __stderrp() -> *mut libc::FILE;
+    fn getprogname() -> *const libc::c_char;
+    fn strchr(_: *const libc::c_char, _: libc::c_int) -> *mut libc::c_char;
+}
+
+#[cfg(target_os = "macos")]
+unsafe fn stderr() -> *mut libc::FILE {
+    unsafe { __stderrp() }
 }
 
 #[no_mangle]
@@ -64,12 +77,24 @@ pub unsafe fn BSDgetopt(
             BSDoptind;
         }
         if BSDopterr != 0 && *ostr as libc::c_int != ':' as i32 {
-            fprintf(
-                stderr,
-                b"%s: unknown option -- %c\n\0" as *const u8 as *const libc::c_char,
-                getprogname(),
-                BSDoptopt,
-            );
+            #[cfg(target_os = "linux")]
+            {
+                fprintf(
+                    stderr,
+                    b"%s: unknown option -- %c\n\0" as *const u8 as *const libc::c_char,
+                    getprogname(),
+                    BSDoptopt,
+                );
+            }
+            #[cfg(target_os = "macos")]
+            {
+                fprintf(
+                    stderr(),
+                    b"%s: unknown option -- %c\n\0" as *const u8 as *const libc::c_char,
+                    getprogname(),
+                    BSDoptopt,
+                );
+            }
         }
         return '?' as i32;
     }
@@ -91,13 +116,26 @@ pub unsafe fn BSDgetopt(
                     return ':' as i32;
                 }
                 if BSDopterr != 0 {
-                    fprintf(
-                        stderr,
-                        b"%s: option requires an argument -- %c\n\0" as *const u8
-                            as *const libc::c_char,
-                        getprogname(),
-                        BSDoptopt,
-                    );
+                    #[cfg(target_os = "linux")]
+                    {
+                        fprintf(
+                            stderr,
+                            b"%s: option requires an argument -- %c\n\0" as *const u8
+                                as *const libc::c_char,
+                            getprogname(),
+                            BSDoptopt,
+                        );
+                    }
+                    #[cfg(target_os = "macos")]
+                    {
+                        fprintf(
+                            stderr(),
+                            b"%s: option requires an argument -- %c\n\0" as *const u8
+                                as *const libc::c_char,
+                            getprogname(),
+                            BSDoptopt,
+                        );
+                    }
                 }
                 return '?' as i32;
             } else {

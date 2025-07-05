@@ -58,15 +58,64 @@ pub const ACCESSPERMS: libc::mode_t = libc::S_IRWXU | libc::S_IRWXG | libc::S_IR
 #[allow(non_snake_case)]
 #[inline]
 pub fn S_ISDIR(mode: u32) -> bool {
-    mode & libc::S_IFMT == libc::S_IFDIR
+    mode & (libc::S_IFMT as u32) == (libc::S_IFDIR as u32)
 }
+
+// macOS compatibility functions
+#[cfg(target_os = "macos")]
+pub unsafe fn explicit_bzero(ptr: *mut c_void, size: usize) {
+    // Use memset_s if available, otherwise fall back to memset + compiler barrier
+    libc::memset(ptr, 0, size);
+    std::sync::atomic::compiler_fence(std::sync::atomic::Ordering::SeqCst);
+}
+
+#[cfg(target_os = "macos")]
+pub unsafe fn reallocarray(ptr: *mut c_void, nmemb: usize, size: usize) -> *mut c_void {
+    // Check for overflow
+    if nmemb > 0 && size > usize::MAX / nmemb {
+        crate::errno!(libc::ENOMEM);
+        return std::ptr::null_mut();
+    }
+
+    let total_size = nmemb * size;
+    if total_size == 0 {
+        return std::ptr::null_mut();
+    }
+
+    libc::realloc(ptr, total_size)
+}
+
+#[cfg(target_os = "macos")]
+pub unsafe fn posix_basename(path: *const c_char) -> *mut c_char {
+    // Simple implementation - just return the part after the last '/'
+    let mut last_slash = path;
+    let mut current = path;
+
+    while *current != 0 {
+        if *current == b'/' as c_char {
+            last_slash = current.add(1);
+        }
+        current = current.add(1);
+    }
+
+    if *last_slash == 0 {
+        return c".".as_ptr() as *mut c_char;
+    }
+
+    last_slash as *mut c_char
+}
+
+#[cfg(target_os = "macos")]
+pub unsafe fn prctl(_option: c_int, _arg2: *const c_char) -> c_int {
+    // macOS doesn't have prctl, so this is a no-op
+    0
+}
+
+// Define missing constants for macOS
+#[cfg(target_os = "macos")]
+pub const PR_SET_NAME: c_int = 15;
+#[cfg(target_os = "macos")]
+pub const _SC_MB_LEN_MAX: c_int = 4;
 
 // extern crate compat_derive;
 // pub use compat_derive::TailQEntry;
-
-macro_rules! errno {
-    () => {
-        *::libc::__errno_location()
-    };
-}
-use errno;

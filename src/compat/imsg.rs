@@ -8,7 +8,6 @@ use libc::{
     memmove, memset, msghdr, pid_t,
 };
 
-use super::errno;
 use super::getdtablecount::getdtablecount;
 use super::imsg_buffer::{
     ibuf_add, ibuf_add_buf, ibuf_close, ibuf_data, ibuf_dynamic, ibuf_fd_avail, ibuf_fd_set,
@@ -18,6 +17,7 @@ use super::imsg_buffer::{
 use super::queue::{
     Entry, tailq_entry, tailq_first, tailq_head, tailq_init, tailq_insert_tail, tailq_remove,
 };
+use crate::errno;
 // begin imsg.h
 
 pub const IBUF_READ_SIZE: usize = 65535;
@@ -132,7 +132,7 @@ pub unsafe fn imsg_read(imsgbuf: *mut imsgbuf) -> isize {
         msg.msg_iov = &raw mut iov;
         msg.msg_iovlen = 1;
         msg.msg_control = &raw mut cmsgbuf.buf as *mut c_void;
-        msg.msg_controllen = BUFSIZE;
+        msg.msg_controllen = BUFSIZE as u32;
 
         let mut ifd: *mut imsg_fd = calloc(1, size_of::<imsg_fd>()) as *mut imsg_fd;
         if ifd.is_null() {
@@ -151,7 +151,7 @@ pub unsafe fn imsg_read(imsgbuf: *mut imsgbuf) -> isize {
                         / size_of::<c_int>() as i32)
                     >= getdtablesize()
                 {
-                    errno!() = EAGAIN;
+                    errno!(EAGAIN);
                     free(ifd as *mut c_void);
                     return -1;
                 }
@@ -170,7 +170,7 @@ pub unsafe fn imsg_read(imsgbuf: *mut imsgbuf) -> isize {
                 let mut cmsg: *mut cmsghdr = CMSG_FIRSTHDR(&raw const msg);
                 while !cmsg.is_null() {
                     if (*cmsg).cmsg_level == SOL_SOCKET && (*cmsg).cmsg_type == SCM_RIGHTS {
-                        let j: i32 = (((cmsg as *mut c_char).add((*cmsg).cmsg_len).addr()
+                        let j: i32 = (((cmsg as *mut c_char).add((*cmsg).cmsg_len as usize).addr()
                             - CMSG_DATA(cmsg).addr())
                             / size_of::<c_int>()) as i32;
                         for i in 0..j {
@@ -215,7 +215,7 @@ pub unsafe fn imsg_get(imsgbuf: *mut imsgbuf, imsg: *mut imsg) -> isize {
             size_of::<imsg_hdr>(),
         );
         if ((*m).hdr.len as usize) < IMSG_HEADER_SIZE || (*m).hdr.len > MAX_IMSGSIZE as u16 {
-            errno!() = ERANGE;
+            errno!(ERANGE);
             return -1;
         }
         if ((*m).hdr.len as usize) > av {
@@ -266,7 +266,7 @@ pub unsafe fn imsg_get(imsgbuf: *mut imsgbuf, imsg: *mut imsg) -> isize {
 pub unsafe fn imsg_get_ibuf(imsg: *mut imsg, ibuf: *mut ibuf) -> c_int {
     unsafe {
         if (*imsg).buf.is_null() {
-            errno!() = EBADMSG;
+            errno!(EBADMSG);
             return -1;
         }
         ibuf_get_ibuf((*imsg).buf, ibuf_size((*imsg).buf), ibuf)
@@ -276,11 +276,11 @@ pub unsafe fn imsg_get_ibuf(imsg: *mut imsg, ibuf: *mut ibuf) -> c_int {
 pub unsafe fn imsg_get_data(imsg: *mut imsg, data: *mut c_void, len: usize) -> i32 {
     unsafe {
         if len == 0 {
-            errno!() = EINVAL;
+            errno!(EINVAL);
             return -1;
         }
         if (*imsg).buf.is_null() || ibuf_size((*imsg).buf) != len {
-            errno!() = EBADMSG;
+            errno!(EBADMSG);
             return -1;
         }
         ibuf_get((*imsg).buf, data, len)
@@ -389,7 +389,7 @@ pub unsafe fn imsg_compose_ibuf(
 
         'fail: {
             if ibuf_size(buf) + IMSG_HEADER_SIZE > MAX_IMSGSIZE {
-                errno!() = ERANGE;
+                errno!(ERANGE);
                 break 'fail;
             }
 
@@ -421,7 +421,7 @@ pub unsafe fn imsg_compose_ibuf(
         let save_errno = errno!();
         ibuf_free(buf);
         ibuf_free(hdrbuf);
-        errno!() = save_errno;
+        errno!(save_errno);
         -1
     }
 }
@@ -471,7 +471,7 @@ pub unsafe fn imsg_create(
     unsafe {
         datalen += IMSG_HEADER_SIZE;
         if datalen > MAX_IMSGSIZE {
-            errno!() = ERANGE;
+            errno!(ERANGE);
             return null_mut();
         }
 

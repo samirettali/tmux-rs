@@ -30,7 +30,7 @@ pub unsafe fn name_time_expired(w: *mut window, tv: *mut timeval) -> c_int {
         timersub(tv, &raw mut (*w).name_time, offset.as_mut_ptr());
         let offset = offset.assume_init_ref();
 
-        if offset.tv_sec != 0 || offset.tv_usec > NAME_INTERVAL as i64 {
+        if offset.tv_sec != 0 || (offset.tv_usec as i64) > NAME_INTERVAL as i64 {
             0
         } else {
             NAME_INTERVAL - offset.tv_usec as c_int
@@ -69,7 +69,7 @@ pub unsafe fn check_window_name(w: *mut window) {
             if evtimer_pending(&raw mut (*w).name_event, null_mut()) == 0 {
                 log_debug!("@{} timer queued ({})", (*w).id, left);
                 timerclear(&raw mut next);
-                next.tv_usec = left as i64;
+                next.tv_usec = left as i32;
                 event_add(&raw mut (*w).name_event, &raw const next);
             } else {
                 log_debug!("@{} timer already queued ({})", (*w).id, left);
@@ -172,7 +172,14 @@ pub unsafe fn parse_window_name(in_: *const c_char) -> *mut c_char {
         }
 
         if *name == b'/' as c_char {
-            name = libc::posix_basename(name);
+            #[cfg(target_os = "linux")]
+            {
+                name = libc::posix_basename(name);
+            }
+            #[cfg(target_os = "macos")]
+            {
+                name = crate::compat::posix_basename(name);
+            }
         }
         name = xstrdup(name).cast().as_ptr();
         free(copy as _);

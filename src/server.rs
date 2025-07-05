@@ -17,9 +17,8 @@ use libc::{
     AF_UNIX, ECHILD, ENAMETOOLONG, S_IRGRP, S_IROTH, S_IRUSR, S_IRWXG, S_IRWXO, S_IXGRP, S_IXOTH,
     S_IXUSR, SIG_BLOCK, SIG_SETMASK, SIGCONT, SIGTTIN, SIGTTOU, SOCK_STREAM, WIFEXITED,
     WIFSIGNALED, WIFSTOPPED, WNOHANG, WSTOPSIG, WUNTRACED, accept, bind, chmod, close, fprintf,
-    gettimeofday, kill, killpg, listen, malloc_trim, sigfillset, sigprocmask, sigset_t,
-    sockaddr_storage, sockaddr_un, socket, socklen_t, stat, strerror, strsignal, umask, unlink,
-    waitpid,
+    gettimeofday, kill, killpg, listen, sigfillset, sigprocmask, sigset_t, sockaddr_storage,
+    sockaddr_un, socket, socklen_t, stat, strerror, strsignal, umask, unlink, waitpid,
 };
 
 use crate::compat::{
@@ -98,7 +97,7 @@ pub unsafe fn server_create_socket(flags: client_flag, cause: *mut *mut c_char) 
                 size_of_val(&sa.sun_path),
             );
             if size >= size_of_val(&sa.sun_path) {
-                errno!() = ENAMETOOLONG;
+                errno!(ENAMETOOLONG);
                 break 'fail;
             }
             unlink(sa.sun_path.as_ptr());
@@ -118,7 +117,7 @@ pub unsafe fn server_create_socket(flags: client_flag, cause: *mut *mut c_char) 
             if bind(fd, &raw const sa as _, size_of::<sockaddr_un>() as _) == -1 {
                 saved_errno = errno!();
                 close(fd);
-                errno!() = saved_errno;
+                errno!(saved_errno);
                 break 'fail;
             }
             umask(mask);
@@ -126,7 +125,7 @@ pub unsafe fn server_create_socket(flags: client_flag, cause: *mut *mut c_char) 
             if listen(fd, 128) == -1 {
                 saved_errno = errno!();
                 close(fd);
-                errno!() = saved_errno;
+                errno!(saved_errno);
                 break 'fail;
             }
             setblocking(fd, 0);
@@ -157,7 +156,8 @@ unsafe extern "C" fn server_tidy_event(_fd: i32, _events: i16, _data: *mut c_voi
 
         format_tidy_jobs();
 
-        malloc_trim(0);
+        #[cfg(target_os = "linux")]
+        libc::malloc_trim(0);
 
         log_debug!(
             "{}: took {} milliseconds",
@@ -262,7 +262,7 @@ pub unsafe fn server_start(
                 (*c).exit_message = cause;
                 (*c).flags |= client_flag::EXIT;
             } else {
-                fprintf(stderr, c"%s\n".as_ptr(), cause);
+                fprintf(get_stderr(), c"%s\n".as_ptr(), cause);
                 libc::exit(1);
             }
         }
